@@ -5,8 +5,6 @@ from datetime import datetime
 from bson.json_util import dumps
 import json
 import random
-import os
-
 
 
 ###############################################################################
@@ -14,9 +12,10 @@ import os
 
 DB_NAME = 'emaildb'
 EML_COLLECTION = "payload"
+USER_COLLECTION = "user"
+URL = "mongodb+srv://umerfarooq:{}@cluster0.rru4r.mongodb.net/{}?retryWrites=true&w=majority".format("umerfarooq",DB_NAME)
 
-#URL = "mongodb+srv://umerfarooq:{}@cluster0.rru4r.mongodb.net/{}?retryWrites=true&w=majority".format("umerfarooq",DB_NAME)
-def getDatabaseInstance(URL):
+def getDatabaseInstance():
     #print("GETTING DATABSE INSTANCE")
 
     client = MongoClient(URL)
@@ -35,29 +34,22 @@ def insertEmailBody(database,payload):
 
     email_collection = database[EML_COLLECTION]
     
-    
-    #print(json.dumps(payload, indent=4))
-    
-
-    _id = hash(payload[8]["Body"])
-
     email_template = {
-        "_id": _id,
-        "Conversation ID": payload[0]["Conversation ID"],
-        "Internet Message ID": payload[1]["Internet Message ID"],
-        "Date Time Created": payload[2]["Date Time Created"],
-        "Date Time Modified": payload[3]["Date Time Modified"],
-        "Display Name:": payload[4]["From"]["displayName"],
-        "Sender Email Address": payload[4]["From"]["emailAddress"],
-        "Subject" : payload[5]["Subject"],
-        "Receiver Emaiil Address" : payload[6]["To"],
-        "Total Email Count" : payload[7]["Count"],
-        "Body":payload[8]["Body"],
-        "Extra Information":payload[9]["Extra Information"]
+        "_id": payload["InternetMessageID"],
+        "Analyzer": payload["Analyzer"],
+        "Conversation ID": payload["ConversationID"],
+        "Date Time Created": payload["DateTimeCreated"],
+        "Date Time Modified": payload["DateTimeModified"],
+        "Display Name:": payload["From"]["displayName"],
+        "Sender Email Address": payload["From"]["emailAddress"],
+        "Subject" : payload["Subject"],
+        "Receiver Emaiil Address" : payload["To"],
+        "Total Email Count" : payload["Count"],
+        "Body":payload["Body"],
+        "Extra Information":payload["ExtraInformation"]
         }
     
-    #email = email_collection.find_one({"_id":hash(Body)})
-    email = email_collection.find_one({"Body":payload[8]["Body"]})
+    email = email_collection.find_one({"Subject":payload["Subject"]})#email_collection.find_one({"Body":payload["Body"]})
     
     if email is None:
         email_collection.insert_one(email_template)
@@ -67,15 +59,14 @@ def insertEmailBody(database,payload):
    
 
      
-def findEmail(database, Body):
+def findEmail(database, Subject):
 
   email_collection = database[EML_COLLECTION]
   
-  #email = email_collection.find_one({"_id":hash(Body)})
-  email = email_collection.find_one({"Body":Body})
+  email = email_collection.find_one({"Subject":Subject})
   if email is None:
       return False, None
-  return True, email['Receiver Emaiil Address']
+  return True, email['Analyzer']
 
 def getEmailPhisingStatus(database,Body):
     

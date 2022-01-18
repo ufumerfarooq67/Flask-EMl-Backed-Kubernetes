@@ -39,26 +39,26 @@ def analyzingEmailHeader():
        request_data = request.data
        request_data = json.loads(request_data.decode('utf-8'))
        
-       _id = request_data['id']
-       
-       data = request_data['data'] 
-       data = base64.b64decode(data)
-       data = str(data, "utf-8")
-       
-       payload = request_data['extra']
-       
+       #print(json.dumps(request_data,indent=4))
 
-        
-       database = getDatabaseInstance(URL)
+       mime_data = request_data['data'] 
+       mime_data = base64.b64decode(mime_data)
+       mime_data = str(mime_data, "utf-8")
+
+       payload = request_data['extra']
+       _id = payload["InternetMessageID"]
+       _id = _id.split("@")[0]
+       _id = _id.replace("<","").replace(">","")
+       
+       database = getDatabaseInstance()
        status = insertEmailBody(database,payload)
        
        if status is False:
-           print("Analyzed Already.")
            response = jsonify({'response':"exist"})
        else:
-           fileName = "{}_{}.eml".format(_id,payload[4]["From"]["emailAddress"])
+           fileName = "{}_{}_.eml".format(_id,payload["From"]["emailAddress"])
            emlFile = open(fileName,"w+")
-           emlFile.write(data)
+           emlFile.write(mime_data)
            emlFile.close()
            response = jsonify({'response':"success"})
       
@@ -68,28 +68,23 @@ def analyzingEmailHeader():
    print(response)
    return response
 
-
 @app.route("/checkIfEmailAnalyzed", methods=['POST'])
 def checkIfEmailAnalyzedAlready():
 
    if request.method == 'POST':
        request_data = request.data
        request_data = json.loads(request_data.decode('utf-8'))
-       
-       Body = request_data['Body']
+       Subject = request_data['Subject'] # from body to subject (new test)
     
-   
-       database = getDatabaseInstance(URL)
-       status = findEmail(database,Body)
-       print(status)
+       database = getDatabaseInstance()
+       status = findEmail(database,Subject)
        if status[0] is True:
-
-           analyzer = status[1][0].split('@')
-           analyzerFullname = analyzer[0].split('.')
-           analyzerFullname = " ".join(analyzerFullname).capitalize()
+           analyzer = status[1].split('@')
+           analyzerFullname = analyzer[0].replace('.',' ')
+           analyzerFullname = "".join(analyzerFullname).capitalize()
            response = jsonify({'response':analyzerFullname})
        else:
-           response = jsonify({'response':"new"})
+           response = jsonify({'response':"new_email"})
       
    else:
        response = jsonify({'response':"failed"})
@@ -108,9 +103,8 @@ def fetchEmailReport():
        Body = request_data['Body']
     
        
-       database = getDatabaseInstance(URL)
+       database = getDatabaseInstance()
        status = findEmail(database,Body)
-       
        if status[0] is True:
            response =  jsonify(getEmailPhisingStatus(database,Body))
        else:
@@ -123,6 +117,7 @@ def fetchEmailReport():
    else:
        response = jsonify({'response':"failed"})
 
+   print(response)
    return response
 
 if __name__ == "__main__":
